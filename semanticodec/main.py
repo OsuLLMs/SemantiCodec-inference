@@ -13,7 +13,7 @@ from semanticodec.modules.decoder.latent_diffusion.models.ddpm import (
 from semanticodec.config import get_config
 from semanticodec.modules.decoder.latent_diffusion.util import instantiate_from_config
 from semanticodec.utils import extract_kaldi_fbank_feature
-from huggingface_hub import hf_hub_download
+from huggingface_hub import snapshot_download
 
 # Constants
 SAMPLE_RATE = 16000
@@ -30,8 +30,7 @@ class SemantiCodec(nn.Module):
         semantic_vocab_size,
         ddim_sample_step=50,
         cfg_scale=2.0,
-        checkpoint_path = None,
-        cache_path="pretrained",
+        cache_dir=None,
     ):
         super().__init__()
         self.token_rate = token_rate
@@ -46,23 +45,14 @@ class SemantiCodec(nn.Module):
         else:
             self.device = torch.device("cpu")
 
+        # Download ENTIRE REPO if it is not present:
+        repo_local_path = snapshot_download(repo_id="haoheliu/SemantiCodec",cache_dir=cache_dir)
         # Initialize encoder and decoder
         config, checkpoint_path, feature_dim, lstm_layers, semanticodebook = get_config(
-            token_rate, semantic_vocab_size, checkpoint_path
+            token_rate, semantic_vocab_size, repo_local_path
         )
-        encoder_checkpoint_path = os.path.join(checkpoint_path, "encoder.ckpt")
-        if not os.path.exists(encoder_checkpoint_path):
-            if not os.path.exists(cache_path):
-                os.makedirs(cache_path)
-                print(f"checkpoint cache dir '{cache_path}' was created.")
-            encoder_checkpoint_path = hf_hub_download(repo_id="haoheliu/SemantiCodec",filename=checkpoint_path+"/encoder.ckpt",cache_dir=cache_path)
-        decoder_checkpoint_path = os.path.join(checkpoint_path, "decoder.ckpt")
-        if not os.path.exists(decoder_checkpoint_path):
-            decoder_checkpoint_path = hf_hub_download(repo_id="haoheliu/SemantiCodec",filename=checkpoint_path+"/decoder.ckpt",cache_dir=cache_path)
-
-        if not os.path.exists(semanticodebook):
-            semanticodebook = "/".join(semanticodebook.split("/")[-3:])
-            semanticodebook = hf_hub_download(repo_id="haoheliu/SemantiCodec",filename=semanticodebook,cache_dir=cache_path)
+        encoder_checkpoint_path = os.path.join(repo_local_path, f'semanticodec_tokenrate_{token_rate}', 'encoder.ckpt')
+        decoder_checkpoint_path = os.path.join(repo_local_path, f'semanticodec_tokenrate_{token_rate}', 'decoder.ckpt')
 
         # Initialize encoder
         print("🚀 Loading SemantiCodec encoder")
