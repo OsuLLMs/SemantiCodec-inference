@@ -348,7 +348,10 @@ class AudioMAEConditionQuantResEncoder(nn.Module):
                     # Get the last index of False
                     # last_false_index = false_indices[-1].item() if false_indices.numel() > 0 else -1
                     if false_indices.numel() > 0:
-                        last_false_index = false_indices[-1].item()
+                        if false_indices.shape:
+                            last_false_index = false_indices[-1].item()
+                        else:
+                            last_false_index = false_indices.item()
                     else:
                         last_false_index = -1
                     column_max = last_false_index + 1
